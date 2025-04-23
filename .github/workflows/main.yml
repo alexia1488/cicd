@@ -1,5 +1,5 @@
    yaml
-   name: Docker Build and Push
+   name: Docker Build'n Push
 
    on:
      push:
