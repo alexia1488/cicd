@@ -1,56 +1,50 @@
-name: CI/CD Pipeline (Сборка и деплой)
+name: Docker Build and Push with Code Checks
 
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
 
 jobs:
-  lint:
-    name: Проверка стиля кода
+  checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Установка Python
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
-      - name: Установка flake8 (линтер)
-        run: pip install flake8
-      - name: Запуск flake8
-        run: flake8 app.py --count --show-source --statistics
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 pytest
 
-  test:
-    name: Запуск тестов
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Установка Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.9'
-      - name: Установка зависимостей
-        run: pip install pytest
-      - name: Запуск pytest
-        run: pytest
+      - name: Lint with flake8
+        run: |
+          flake8 .
 
-  docker:
-    name: Сборка и публикация Docker образа
-    needs: [lint, test]  # Зависит от успешного выполнения lint и test
+      - name: Test with pytest
+        run: |
+          pytest
+
+  build:
     runs-on: ubuntu-latest
+    needs: checks  # Ensure checks job completes successfully before building
     steps:
-      - name: Получение кода
+      - name: Checkout code
         uses: actions/checkout@v2
       
-      - name: Логин в Docker Hub
-        uses: docker/login-action@v1
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       
-      - name: Сборка и публикация образа
-        uses: docker/build-push-action@v2
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
         with:
           context: .
           push: true
